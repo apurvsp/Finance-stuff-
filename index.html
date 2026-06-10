@@ -1,0 +1,518 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Reverse DCF Calculator</title>
+<style>
+  :root {
+    --bg: #f4f6f9;
+    --card: #ffffff;
+    --ink: #1a2233;
+    --ink-soft: #5b6577;
+    --line: #e3e8ef;
+    --accent: #2f6fed;
+    --accent-ink: #1d4fc4;
+    --good: #157f3d;
+    --bad: #c0392b;
+    --radius: 12px;
+    --mono: "SF Mono", "Cascadia Mono", Consolas, Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 28px 20px 60px; }
+  header h1 { margin: 0 0 4px; font-size: 24px; letter-spacing: -0.02em; }
+  header p { margin: 0 0 24px; color: var(--ink-soft); max-width: 760px; }
+
+  .layout { display: grid; grid-template-columns: 330px 1fr; gap: 20px; align-items: start; }
+  @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+  }
+  .card + .card { margin-top: 20px; }
+  .card h2 {
+    margin: 0 0 12px;
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--ink-soft);
+  }
+
+  .group { margin-bottom: 18px; }
+  .group:last-child { margin-bottom: 0; }
+  .group-title { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-soft); margin: 0 0 8px; }
+  .field { display: grid; grid-template-columns: 1fr 118px; align-items: center; gap: 10px; padding: 5px 0; }
+  .field label { font-size: 13.5px; color: var(--ink); cursor: help; }
+  .field .control { position: relative; }
+  .field input {
+    width: 100%;
+    padding: 7px 30px 7px 10px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    font: 13.5px var(--mono);
+    color: var(--ink);
+    background: #fbfcfe;
+    text-align: right;
+  }
+  .field input:focus { outline: 2px solid #bcd0fa; border-color: var(--accent); }
+  .field input.invalid { border-color: var(--bad); background: #fdf3f2; }
+  .field .unit {
+    position: absolute; right: 9px; top: 50%; transform: translateY(-50%);
+    font-size: 12px; color: var(--ink-soft); pointer-events: none;
+  }
+  .reset-btn {
+    margin-top: 14px; width: 100%;
+    padding: 8px; border: 1px solid var(--line); border-radius: 8px;
+    background: #fff; color: var(--ink-soft); font-size: 13px; cursor: pointer;
+  }
+  .reset-btn:hover { border-color: var(--accent); color: var(--accent-ink); }
+
+  .headline { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 14px; }
+  .headline .big { font: 600 40px/1.1 var(--mono); letter-spacing: -0.02em; }
+  .headline .big.good { color: var(--good); }
+  .headline .big.bad { color: var(--bad); }
+  .headline .sub { color: var(--ink-soft); font-size: 14px; }
+  .verdict { margin: 10px 0 0; color: var(--ink); }
+  .error-msg { color: var(--bad); margin: 4px 0 0; }
+
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-top: 16px; }
+  .stat { background: #f7f9fc; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+  .stat .k { font-size: 11.5px; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.05em; }
+  .stat .v { font: 600 16px var(--mono); margin-top: 2px; }
+
+  .evbar { margin-top: 18px; }
+  .evbar .bar { display: flex; height: 26px; border-radius: 7px; overflow: hidden; border: 1px solid var(--line); }
+  .evbar .seg-fcff { background: #7fa8f3; }
+  .evbar .seg-tv { background: #2f6fed; }
+  .evbar .legend { display: flex; gap: 18px; margin-top: 6px; font-size: 12.5px; color: var(--ink-soft); }
+  .evbar .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: baseline; }
+
+  .chart-note { font-size: 12.5px; color: var(--ink-soft); margin: 8px 0 0; }
+
+  table.sens { border-collapse: collapse; width: 100%; font: 12.5px var(--mono); }
+  table.sens th, table.sens td { border: 1px solid var(--line); padding: 6px 4px; text-align: center; }
+  table.sens th { background: #f7f9fc; font-weight: 600; font-family: inherit; }
+  table.sens td.base { outline: 2px solid var(--ink); outline-offset: -2px; font-weight: 700; }
+  table.sens .axis { font: 600 11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: var(--ink-soft); background: #fff; border: none; text-transform: uppercase; letter-spacing: 0.05em; }
+
+  .footnote { font-size: 12.5px; color: var(--ink-soft); }
+  .footnote ul { margin: 6px 0 0; padding-left: 18px; }
+  .footnote li { margin: 3px 0; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script>
+// ===== MODEL START =====
+// All monetary inputs in $ millions; rates as decimals (0.09 = 9%).
+// Growth path: years 1-5 at rate g, fading linearly to terminal growth by year 10.
+// Margin path: ramps linearly from current to target margin over years 1-5.
+// Reinvestment = incremental revenue / sales-to-capital ratio (Damodaran).
+// Terminal value assumes return on capital = WACC, so terminal
+// reinvestment rate = terminal growth / WACC.
+
+var DCF_YEARS = 10;
+var DCF_FADE_START = 5;
+
+function dcfProject(g, p) {
+  var rows = [];
+  var rev = p.revenue;
+  var pvFcff = 0;
+  for (var t = 1; t <= DCF_YEARS; t++) {
+    var gt = t <= DCF_FADE_START
+      ? g
+      : g + (p.termGrowth - g) * (t - DCF_FADE_START) / (DCF_YEARS - DCF_FADE_START);
+    var prevRev = rev;
+    rev = rev * (1 + gt);
+    var margin = t >= DCF_FADE_START
+      ? p.targetMargin
+      : p.currentMargin + (p.targetMargin - p.currentMargin) * t / DCF_FADE_START;
+    var ebit = rev * margin;
+    var nopat = ebit * (1 - p.taxRate);
+    var reinvest = (rev - prevRev) / p.salesToCapital;
+    var fcff = nopat - reinvest;
+    var pv = fcff / Math.pow(1 + p.wacc, t);
+    pvFcff += pv;
+    rows.push({ year: t, growth: gt, revenue: rev, margin: margin, nopat: nopat, reinvest: reinvest, fcff: fcff, pv: pv });
+  }
+  var nopatNext = rev * (1 + p.termGrowth) * p.targetMargin * (1 - p.taxRate);
+  var termReinvestRate = p.termGrowth > 0 ? p.termGrowth / p.wacc : 0;
+  var terminalValue = nopatNext * (1 - termReinvestRate) / (p.wacc - p.termGrowth);
+  var pvTerminal = terminalValue / Math.pow(1 + p.wacc, DCF_YEARS);
+  var ev = pvFcff + pvTerminal;
+  var equity = ev - p.netDebt;
+  return {
+    rows: rows,
+    pvFcff: pvFcff,
+    pvTerminal: pvTerminal,
+    ev: ev,
+    equity: equity,
+    perShare: equity / p.shares
+  };
+}
+
+var G_MIN = -0.60;
+var G_MAX = 1.50;
+
+// Solve for the year 1-5 growth rate that makes model value = market price.
+function solveImpliedGrowth(price, p) {
+  if (!(p.wacc > p.termGrowth) || !(p.wacc > 0) || !(p.shares > 0) ||
+      !(p.revenue > 0) || !(p.salesToCapital > 0) || !(price > 0)) {
+    return { ok: false, reason: "invalid" };
+  }
+  var f = function (g) { return dcfProject(g, p).perShare - price; };
+  var lo = G_MIN, hi = G_MAX;
+  var flo = f(lo), fhi = f(hi);
+  if (!isFinite(flo) || !isFinite(fhi)) return { ok: false, reason: "invalid" };
+  if (flo > 0) return { ok: false, reason: "below" };  // value > price even at -60%/yr
+  if (fhi < 0) return { ok: false, reason: "above" };  // value < price even at +150%/yr
+  for (var i = 0; i < 200; i++) {
+    var mid = (lo + hi) / 2;
+    if (f(mid) > 0) hi = mid; else lo = mid;
+  }
+  var g = (lo + hi) / 2;
+  return { ok: true, g: g, detail: dcfProject(g, p) };
+}
+// ===== MODEL END =====
+</script>
+
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone@7/babel.min.js"></script>
+
+<script type="text/babel" data-presets="react">
+const { useState, useMemo } = React;
+
+/* ---------- formatting helpers ---------- */
+const pct = (x, d = 1) => (x * 100).toFixed(d) + "%";
+const money = (m) => {  // m is in $ millions
+  const sign = m < 0 ? "-" : "";
+  const a = Math.abs(m);
+  if (a >= 1e6) return sign + "$" + (a / 1e6).toFixed(2) + "T";
+  if (a >= 1e3) return sign + "$" + (a / 1e3).toFixed(1) + "B";
+  return sign + "$" + a.toFixed(0) + "M";
+};
+
+/* ---------- input definitions ---------- */
+const DEFAULTS = {
+  price:          { value: "40",     label: "Current stock price",        unit: "$",   help: "Market price per share you want to reverse-engineer." },
+  shares:         { value: "1000",   label: "Shares outstanding",         unit: "M",   help: "Diluted shares outstanding, in millions." },
+  netDebt:        { value: "0",      label: "Net debt",                   unit: "$M",  help: "Total debt minus cash, in $ millions. Negative if net cash." },
+  revenue:        { value: "10000",  label: "Revenue (TTM)",              unit: "$M",  help: "Trailing twelve-month revenue, in $ millions." },
+  currentMargin:  { value: "18",     label: "Current operating margin",   unit: "%",   help: "EBIT margin today. Ramps to the target margin over 5 years." },
+  targetMargin:   { value: "22",     label: "Target operating margin",    unit: "%",   help: "Steady-state EBIT margin from year 5 onward." },
+  taxRate:        { value: "23",     label: "Tax rate",                   unit: "%",   help: "Effective tax rate applied to operating income." },
+  salesToCapital: { value: "2.5",    label: "Sales-to-capital ratio",     unit: "×",   help: "Revenue generated per $1 of capital reinvested. Higher = more capital-efficient growth. 1.5-3.0 is typical." },
+  wacc:           { value: "9",      label: "WACC",                       unit: "%",   help: "Weighted average cost of capital — the discount rate." },
+  termGrowth:     { value: "2.5",    label: "Terminal growth",            unit: "%",   help: "Perpetual growth rate after year 10. Keep at or below long-run GDP growth. Must be below WACC." },
+};
+
+const GROUPS = [
+  { title: "Market",      keys: ["price", "shares", "netDebt"] },
+  { title: "Business",    keys: ["revenue", "currentMargin", "targetMargin", "taxRate", "salesToCapital"] },
+  { title: "Discounting", keys: ["wacc", "termGrowth"] },
+];
+
+const PERCENT_KEYS = new Set(["currentMargin", "targetMargin", "taxRate", "wacc", "termGrowth"]);
+
+function parseInputs(raw) {
+  const p = {};
+  const invalid = new Set();
+  for (const key of Object.keys(DEFAULTS)) {
+    const n = parseFloat(raw[key]);
+    if (!isFinite(n)) { invalid.add(key); continue; }
+    p[key] = PERCENT_KEYS.has(key) ? n / 100 : n;
+  }
+  if (!invalid.size) {
+    if (!(p.price > 0)) invalid.add("price");
+    if (!(p.shares > 0)) invalid.add("shares");
+    if (!(p.revenue > 0)) invalid.add("revenue");
+    if (!(p.salesToCapital > 0)) invalid.add("salesToCapital");
+    if (!(p.wacc > 0)) invalid.add("wacc");
+    if (!invalid.has("wacc") && !(p.wacc > p.termGrowth)) invalid.add("termGrowth");
+  }
+  return { p, invalid };
+}
+
+/* ---------- components ---------- */
+function Field({ k, raw, invalid, onChange }) {
+  const def = DEFAULTS[k];
+  return (
+    <div className="field">
+      <label htmlFor={"f-" + k} title={def.help}>{def.label}</label>
+      <div className="control">
+        <input
+          id={"f-" + k}
+          type="number"
+          step="any"
+          value={raw}
+          className={invalid ? "invalid" : ""}
+          onChange={(e) => onChange(k, e.target.value)}
+        />
+        <span className="unit">{def.unit}</span>
+      </div>
+    </div>
+  );
+}
+
+function FcffChart({ rows }) {
+  const W = 640, H = 220, padL = 56, padR = 8, padT = 12, padB = 26;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
+  const vals = rows.map((r) => r.fcff);
+  const maxV = Math.max(...vals, 0), minV = Math.min(...vals, 0);
+  const span = maxV - minV || 1;
+  const y = (v) => padT + (maxV - v) / span * plotH;
+  const slot = plotW / rows.length;
+  const barW = slot * 0.62;
+
+  // round gridline step to a clean number
+  const rawStep = span / 4;
+  const mag = Math.pow(10, Math.floor(Math.log10(rawStep)));
+  const step = [1, 2, 2.5, 5, 10].map((m) => m * mag).find((s) => s >= rawStep);
+  const ticks = [];
+  for (let v = Math.ceil(minV / step) * step; v <= maxV + 1e-9; v += step) ticks.push(v);
+
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: "auto", display: "block" }} role="img"
+         aria-label="Projected free cash flow by year at the implied growth rate">
+      {ticks.map((v, i) => (
+        <g key={i}>
+          <line x1={padL} x2={W - padR} y1={y(v)} y2={y(v)}
+                stroke={Math.abs(v) < step / 100 ? "#9aa4b5" : "#e7ebf2"} strokeWidth="1" />
+          <text x={padL - 7} y={y(v) + 4} fontSize="10.5" fill="#5b6577" textAnchor="end"
+                fontFamily="SF Mono, Consolas, Menlo, monospace">{money(v)}</text>
+        </g>
+      ))}
+      {rows.map((r, i) => {
+        const x = padL + i * slot + (slot - barW) / 2;
+        const y0 = y(0), y1 = y(r.fcff);
+        return (
+          <g key={r.year}>
+            <rect x={x} y={Math.min(y0, y1)} width={barW} height={Math.max(1, Math.abs(y0 - y1))}
+                  rx="3" fill={r.fcff >= 0 ? "#2f6fed" : "#c0392b"} opacity="0.88">
+              <title>{`Year ${r.year}\nRevenue ${money(r.revenue)} (${pct(r.growth)} growth)\nFCFF ${money(r.fcff)}\nPV ${money(r.pv)}`}</title>
+            </rect>
+            <text x={x + barW / 2} y={H - 8} fontSize="10.5" fill="#5b6577" textAnchor="middle">Y{r.year}</text>
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+function EvBar({ pvFcff, pvTerminal, ev }) {
+  const fcffShare = Math.max(0, Math.min(1, pvFcff / ev));
+  const tvShare = 1 - fcffShare;
+  return (
+    <div className="evbar">
+      <div className="bar">
+        <div className="seg-fcff" style={{ width: pct(fcffShare, 1) }} title={"PV of years 1-10 cash flows: " + money(pvFcff)} />
+        <div className="seg-tv" style={{ width: pct(tvShare, 1) }} title={"PV of terminal value: " + money(pvTerminal)} />
+      </div>
+      <div className="legend">
+        <span><i className="seg-fcff" /> Years 1–10 cash flows · {money(pvFcff)} ({pct(fcffShare)})</span>
+        <span><i className="seg-tv" /> Terminal value · {money(pvTerminal)} ({pct(tvShare)})</span>
+      </div>
+    </div>
+  );
+}
+
+function SensitivityTable({ p }) {
+  const waccs = [-0.02, -0.01, 0, 0.01, 0.02].map((d) => p.wacc + d).filter((w) => w > p.termGrowth + 0.005);
+  const margins = [-0.04, -0.02, 0, 0.02, 0.04].map((d) => p.targetMargin + d);
+
+  const grid = waccs.map((w) =>
+    margins.map((m) => {
+      const r = solveImpliedGrowth(p.price, { ...p, wacc: w, targetMargin: m });
+      return r.ok ? r.g : (r.reason === "below" ? -Infinity : r.reason === "above" ? Infinity : NaN);
+    })
+  );
+  const finite = grid.flat().filter(isFinite);
+  const lo = Math.min(...finite), hi = Math.max(...finite);
+
+  const cellStyle = (g) => {
+    if (!isFinite(g)) return {};
+    const t = hi > lo ? (g - lo) / (hi - lo) : 0.5;
+    return { background: `hsl(${120 - 120 * t}, 62%, 88%)` };
+  };
+  const cellText = (g) =>
+    g === -Infinity ? "<" + pct(G_MIN, 0) : g === Infinity ? ">" + pct(G_MAX, 0) : isNaN(g) ? "—" : pct(g);
+
+  return (
+    <div style={{ overflowX: "auto" }}>
+      <table className="sens">
+        <thead>
+          <tr>
+            <th className="axis"></th>
+            <th className="axis" colSpan={margins.length}>Target operating margin →</th>
+          </tr>
+          <tr>
+            <th>WACC ↓</th>
+            {margins.map((m, j) => <th key={j}>{pct(m, 0)}</th>)}
+          </tr>
+        </thead>
+        <tbody>
+          {waccs.map((w, i) => (
+            <tr key={i}>
+              <th>{pct(w, 0)}</th>
+              {margins.map((m, j) => {
+                const isBase = Math.abs(w - p.wacc) < 1e-9 && Math.abs(m - p.targetMargin) < 1e-9;
+                return (
+                  <td key={j} className={isBase ? "base" : ""} style={cellStyle(grid[i][j])}>
+                    {cellText(grid[i][j])}
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function App() {
+  const [raw, setRaw] = useState(() =>
+    Object.fromEntries(Object.entries(DEFAULTS).map(([k, d]) => [k, d.value]))
+  );
+  const onChange = (k, v) => setRaw((r) => ({ ...r, [k]: v }));
+  const reset = () => setRaw(Object.fromEntries(Object.entries(DEFAULTS).map(([k, d]) => [k, d.value])));
+
+  const { p, invalid } = useMemo(() => parseInputs(raw), [raw]);
+  const result = useMemo(
+    () => (invalid.size ? null : solveImpliedGrowth(p.price, p)),
+    [p, invalid]
+  );
+
+  const ok = result && result.ok;
+  const d = ok ? result.detail : null;
+  const cagr10 = ok ? Math.pow(d.rows[9].revenue / p.revenue, 1 / 10) - 1 : null;
+
+  return (
+    <div className="wrap">
+      <header>
+        <h1>Reverse DCF Calculator</h1>
+        <p>
+          Instead of guessing growth to get a price, this works backwards: given today&rsquo;s
+          stock price, your margin assumptions and your cost of capital, it solves for the
+          revenue growth rate the market is implicitly pricing in. If that hurdle looks
+          easy for the business to clear, the stock may be cheap; if it looks heroic, it&rsquo;s expensive.
+        </p>
+      </header>
+
+      <div className="layout">
+        <aside className="card">
+          <h2>Assumptions</h2>
+          {GROUPS.map((g) => (
+            <div className="group" key={g.title}>
+              <p className="group-title">{g.title}</p>
+              {g.keys.map((k) => (
+                <Field key={k} k={k} raw={raw[k]} invalid={invalid.has(k)} onChange={onChange} />
+              ))}
+            </div>
+          ))}
+          <button className="reset-btn" onClick={reset}>Reset to example</button>
+        </aside>
+
+        <main>
+          <div className="card">
+            <h2>Implied growth</h2>
+            {invalid.size > 0 && (
+              <p className="error-msg">
+                Fix the highlighted inputs{invalid.has("termGrowth") ? " (terminal growth must be below WACC)" : ""}.
+              </p>
+            )}
+            {!invalid.size && result && !result.ok && result.reason === "below" && (
+              <p className="error-msg">
+                Even assuming revenue shrinks {pct(Math.abs(G_MIN), 0)} per year, the model value exceeds
+                the current price. The market is pricing in something worse than growth — likely
+                margin compression or higher risk than you&rsquo;ve assumed.
+              </p>
+            )}
+            {!invalid.size && result && !result.ok && result.reason === "above" && (
+              <p className="error-msg">
+                No growth rate up to +{pct(G_MAX, 0)} per year justifies the current price under these
+                assumptions. The market is betting on far higher margins, a lower discount rate, or both.
+              </p>
+            )}
+            {ok && (
+              <React.Fragment>
+                <div className="headline">
+                  <span className={"big " + (result.g > 0.15 ? "bad" : result.g < 0.05 ? "good" : "")}>
+                    {pct(result.g)}
+                  </span>
+                  <span className="sub">per year, years 1–5 &middot; fading to {pct(p.termGrowth)} by year 10</span>
+                </div>
+                <p className="verdict">
+                  At <b>${p.price.toFixed(2)}</b>, the market is pricing in <b>{pct(result.g)}</b> annual
+                  revenue growth for the next five years — revenue rising
+                  from <b>{money(p.revenue)}</b> to <b>{money(d.rows[4].revenue)}</b> by year 5
+                  and <b>{money(d.rows[9].revenue)}</b> by year 10 — assuming operating margins
+                  reach <b>{pct(p.targetMargin, 0)}</b> and capital costs <b>{pct(p.wacc)}</b>.
+                </p>
+                <div className="stats">
+                  <div className="stat"><div className="k">10-yr revenue CAGR</div><div className="v">{pct(cagr10)}</div></div>
+                  <div className="stat"><div className="k">Year-10 revenue</div><div className="v">{money(d.rows[9].revenue)}</div></div>
+                  <div className="stat"><div className="k">Implied enterprise value</div><div className="v">{money(d.ev)}</div></div>
+                  <div className="stat"><div className="k">Year-10 FCFF</div><div className="v">{money(d.rows[9].fcff)}</div></div>
+                </div>
+                <EvBar pvFcff={d.pvFcff} pvTerminal={d.pvTerminal} ev={d.ev} />
+              </React.Fragment>
+            )}
+          </div>
+
+          {ok && (
+            <div className="card">
+              <h2>Projected free cash flow at implied growth</h2>
+              <FcffChart rows={d.rows} />
+              <p className="chart-note">
+                Free cash flow to the firm each year, assuming the implied growth path. Early years can
+                be depressed (or negative) because growth has to be paid for with reinvestment.
+                Hover a bar for detail.
+              </p>
+            </div>
+          )}
+
+          {!invalid.size && (
+            <div className="card">
+              <h2>Sensitivity — implied 5-yr growth across WACC × target margin</h2>
+              <SensitivityTable p={p} />
+              <p className="chart-note">
+                Green cells mean the market&rsquo;s hurdle is low under that scenario; red means the
+                price demands aggressive growth. The outlined cell is your base case.
+              </p>
+            </div>
+          )}
+
+          <div className="card footnote">
+            <h2>Methodology</h2>
+            <ul>
+              <li>10-year, two-stage FCFF model: revenue grows at the solved rate for years 1–5, then fades linearly to the terminal rate by year 10.</li>
+              <li>Operating margin ramps linearly from current to target over years 1–5; NOPAT = EBIT × (1 − tax rate).</li>
+              <li>Reinvestment = incremental revenue ÷ sales-to-capital ratio, so faster growth consumes more cash.</li>
+              <li>Terminal value assumes return on capital converges to WACC (no value creation in perpetuity): TV = NOPAT<sub>11</sub> × (1 − g/WACC) ÷ (WACC − g).</li>
+              <li>Equity value = PV of cash flows + PV of terminal value − net debt; the growth rate is solved by bisection so value per share equals the market price.</li>
+              <li>This is a framing tool, not a valuation. The implied growth rate is only as good as the margin, reinvestment and discount-rate assumptions behind it.</li>
+            </ul>
+          </div>
+        </main>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>
