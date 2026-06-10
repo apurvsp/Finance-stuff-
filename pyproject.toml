@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "paper-simplifier"
+version = "0.1.0"
+description = "Explain any research paper in plain language, with hands-on experiments to validate its claims yourself"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = ["anthropic>=0.40.0"]
+
+[project.scripts]
+paper-simplifier = "paper_simplifier.cli:main"
+
+[tool.setuptools]
+packages = ["paper_simplifier"]
