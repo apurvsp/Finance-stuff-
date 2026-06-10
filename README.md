@@ -9,14 +9,24 @@ Feed it any research paper and get back:
 
 Powered by Claude Opus 4.8, which reads the full PDF directly.
 
-## Setup
+Comes in two flavors: a **CLI** (below) and a **single-file web app**.
+
+## Web app (no install)
+
+Open [`paper-simplifier.html`](paper-simplifier.html) in any browser — it's a self-contained React app, no build step or server needed. Paste your Anthropic API key, then enter an arXiv ID/URL or upload a PDF. The report streams in live, and you can ask follow-up questions about the paper afterwards.
+
+Everything runs in your browser; the key and paper are sent only to the Claude API (the key can optionally be remembered in localStorage — avoid that on shared machines).
+
+## CLI
+
+### Setup
 
 ```bash
 pip install -e .
 export ANTHROPIC_API_KEY="sk-ant-..."   # get one at https://platform.claude.com
 ```
 
-## Usage
+### Usage
 
 ```bash
 # An arXiv paper, by ID or URL
@@ -32,7 +42,7 @@ paper-simplifier https://example.com/paper.pdf
 
 You can also run it without installing: `python -m paper_simplifier <paper>`.
 
-### Options
+#### Options
 
 | Flag | What it does |
 |---|---|
@@ -41,7 +51,7 @@ You can also run it without installing: `python -m paper_simplifier <paper>`.
 | `-o report.md` | Save the report to a Markdown file as well as printing it |
 | `-i`, `--interactive` | After the report, ask follow-up questions about the paper in a chat loop |
 
-### Examples
+#### Examples
 
 ```bash
 # Explain a paper to a 12-year-old and save the report
