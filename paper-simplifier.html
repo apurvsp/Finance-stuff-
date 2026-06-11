@@ -72,6 +72,9 @@
                border-radius: 999px; padding: .3rem .9rem; font-size: .9rem;
                font-family: ui-sans-serif, system-ui, sans-serif; }
   .file-chip button { background: none; border: none; cursor: pointer; color: var(--muted); font-size: 1rem; }
+  .setup-notice { background: #fff8e8; border-color: #ecd9a0; font-size: .95rem; }
+  .setup-notice code { background: #fff; border: 1px solid var(--border); border-radius: 4px;
+                       padding: .1em .35em; font-size: .9em; }
   .error { background: #fdf0ed; border: 1px solid #efc4ba; color: var(--danger);
            border-radius: 8px; padding: .75rem 1rem; margin-bottom: 1rem; font-size: .95rem; }
   .status { color: var(--muted); font-style: italic; margin: 1rem 0; }
@@ -112,7 +115,16 @@
 <div id="root"></div>
 
 <script type="text/babel" data-presets="react">
-const { useState, useRef, useEffect, useCallback } = React;
+const { useState, useRef, useCallback } = React;
+
+/* ─────────────────────────── SETUP: PASTE YOUR KEY ───────────────────────────
+   Put your Anthropic API key between the quotes below (get one at
+   https://platform.claude.com), save the file, and reload it in your browser.
+
+   ⚠️  The key gives access to your Anthropic account. Keep this file private
+   once the key is in it — do NOT commit it to a public repo or share it.
+──────────────────────────────────────────────────────────────────────────── */
+const API_KEY = "PASTE_YOUR_ANTHROPIC_API_KEY_HERE";
 
 /* ----------------------------- constants ------------------------------ */
 
@@ -285,9 +297,9 @@ function Markdown({ text }) {
   return <div dangerouslySetInnerHTML={{ __html: html }} />;
 }
 
+const KEY_READY = /^sk-ant-/.test(API_KEY);
+
 function App() {
-  const [apiKey, setApiKey] = useState(() => localStorage.getItem("ps_api_key") || "");
-  const [rememberKey, setRememberKey] = useState(() => !!localStorage.getItem("ps_api_key"));
   const [reference, setReference] = useState("");
   const [file, setFile] = useState(null);
   const [level, setLevel] = useState("general");
@@ -304,16 +316,11 @@ function App() {
   const fileInputRef = useRef(null);
   const abortRef = useRef(null);
 
-  useEffect(() => {
-    if (rememberKey && apiKey) localStorage.setItem("ps_api_key", apiKey);
-    else localStorage.removeItem("ps_api_key");
-  }, [apiKey, rememberKey]);
-
   const busy = phase === "generating" || phase === "answering";
 
   const generate = useCallback(async () => {
     setError("");
-    if (!apiKey.trim()) { setError("Enter your Anthropic API key first."); return; }
+    if (!KEY_READY) { setError("No API key set — open this file in a text editor and paste your key into the API_KEY line near the top."); return; }
 
     let block, label;
     try {
@@ -338,7 +345,7 @@ function App() {
 
     try {
       const fullText = await streamMessage({
-        apiKey: apiKey.trim(),
+        apiKey: API_KEY,
         messages: messagesRef.current,
         onText: setReport,
         signal: abortRef.current.signal,
@@ -349,7 +356,7 @@ function App() {
       if (e.name !== "AbortError") setError(e.message);
       setPhase(messagesRef.current.length > 1 ? "done" : "idle");
     }
-  }, [apiKey, file, reference, level, nExperiments]);
+  }, [file, reference, level, nExperiments]);
 
   const ask = useCallback(async () => {
     const q = question.trim();
@@ -363,7 +370,7 @@ function App() {
     messagesRef.current.push({ role: "user", content: q });
     try {
       const fullText = await streamMessage({
-        apiKey: apiKey.trim(),
+        apiKey: API_KEY,
         messages: messagesRef.current,
         onText: (t) => setChat((c) => [...c.slice(0, -1), { role: "assistant", text: t }]),
         signal: abortRef.current.signal,
@@ -375,7 +382,7 @@ function App() {
       if (e.name !== "AbortError") setError(e.message);
     }
     setPhase("done");
-  }, [question, busy, apiKey]);
+  }, [question, busy]);
 
   const stop = () => abortRef.current?.abort();
 
@@ -397,16 +404,16 @@ function App() {
         </p>
       </header>
 
-      <div className="card">
-        <label htmlFor="key">Anthropic API key</label>
-        <input id="key" type="password" placeholder="sk-ant-..." value={apiKey}
-               onChange={(e) => setApiKey(e.target.value)} />
-        <div className="checkbox-line">
-          <input id="remember" type="checkbox" checked={rememberKey}
-                 onChange={(e) => setRememberKey(e.target.checked)} />
-          <label htmlFor="remember">Remember in this browser (stored in localStorage — don't use on shared computers)</label>
+      {!KEY_READY && (
+        <div className="card setup-notice">
+          <strong>One-time setup:</strong> open this file in a text editor, find the
+          {" "}<code>API_KEY</code> line near the top, and paste your Anthropic API key
+          between the quotes (get one at{" "}
+          <a href="https://platform.claude.com" target="_blank" rel="noreferrer">platform.claude.com</a>).
+          Save and reload this page. Keep the file private afterwards — the key gives
+          access to your account.
         </div>
-      </div>
+      )}
 
       <div className="card">
         <label htmlFor="ref">Paper — arXiv ID, arXiv URL, or direct PDF link</label>
@@ -485,8 +492,9 @@ function App() {
       )}
 
       <footer>
-        Runs entirely in your browser — your API key and papers go only to the
-        {" "}<a href="https://platform.claude.com" target="_blank" rel="noreferrer">Claude API</a>.
+        Runs entirely in your browser — papers go only to the
+        {" "}<a href="https://platform.claude.com" target="_blank" rel="noreferrer">Claude API</a>,
+        using the key embedded in this file. Keep the file private.
         Reports are AI-generated; for high-stakes decisions, read the paper.
       </footer>
     </>

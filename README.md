@@ -13,9 +13,11 @@ Comes in two flavors: a **CLI** (below) and a **single-file web app**.
 
 ## Web app (no install)
 
-Open [`paper-simplifier.html`](paper-simplifier.html) in any browser — it's a self-contained React app, no build step or server needed. Paste your Anthropic API key, then enter an arXiv ID/URL or upload a PDF. The report streams in live, and you can ask follow-up questions about the paper afterwards.
+[`paper-simplifier.html`](paper-simplifier.html) is a self-contained React app — no build step or server needed.
 
-Everything runs in your browser; the key and paper are sent only to the Claude API (the key can optionally be remembered in localStorage — avoid that on shared machines).
+**One-time setup:** open the file in a text editor, find the `API_KEY` line near the top, and paste your Anthropic API key between the quotes. After that, just open the file in any browser: enter an arXiv ID/URL or upload a PDF, the report streams in live, and you can ask follow-up questions afterwards.
+
+> ⚠️ Once your key is in the file, **keep that copy private** — don't commit it to a public repo or share it. The version in this repo ships with a placeholder.
 
 ## CLI
 
