@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Paper Simplifier</title>
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked@12/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
+<style>
+  :root {
+    --ink: #1d2733;
+    --paper: #fbfaf7;
+    --card: #ffffff;
+    --accent: #0e6e6e;
+    --accent-soft: #e3f1f1;
+    --muted: #6b7785;
+    --border: #e4e1da;
+    --danger: #b3422e;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    line-height: 1.6;
+  }
+  #root { max-width: 880px; margin: 0 auto; padding: 2.5rem 1.25rem 5rem; }
+  header h1 { font-size: 2.4rem; margin: 0 0 .25rem; letter-spacing: -0.02em; }
+  header h1 em { color: var(--accent); font-style: italic; }
+  header p.tagline { color: var(--muted); margin: 0 0 2rem; font-size: 1.05rem; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1.25rem;
+    box-shadow: 0 1px 3px rgba(29, 39, 51, 0.05);
+  }
+  label { display: block; font-size: .8rem; text-transform: uppercase; letter-spacing: .08em;
+          color: var(--muted); margin-bottom: .35rem;
+          font-family: ui-sans-serif, system-ui, sans-serif; font-weight: 600; }
+  input[type="text"], input[type="password"], select {
+    width: 100%; padding: .6rem .75rem; font-size: 1rem; font-family: inherit;
+    border: 1px solid var(--border); border-radius: 7px; background: #fff; color: var(--ink);
+  }
+  input:focus, select:focus { outline: 2px solid var(--accent-soft); border-color: var(--accent); }
+  .row { display: flex; gap: 1rem; flex-wrap: wrap; }
+  .row > div { flex: 1; min-width: 160px; }
+  .checkbox-line { display: flex; align-items: center; gap: .5rem; margin-top: .5rem;
+                   font-size: .9rem; color: var(--muted);
+                   font-family: ui-sans-serif, system-ui, sans-serif; }
+  .checkbox-line label { all: unset; cursor: pointer; }
+  button.primary {
+    background: var(--accent); color: #fff; border: none; border-radius: 7px;
+    padding: .75rem 1.5rem; font-size: 1.05rem; font-family: inherit; cursor: pointer;
+    width: 100%; margin-top: .5rem;
+  }
+  button.primary:hover { filter: brightness(1.1); }
+  button.primary:disabled { background: var(--muted); cursor: not-allowed; }
+  button.ghost {
+    background: none; border: 1px solid var(--border); border-radius: 7px;
+    padding: .4rem .9rem; font-family: inherit; font-size: .9rem; cursor: pointer; color: var(--ink);
+  }
+  button.ghost:hover { border-color: var(--accent); color: var(--accent); }
+  .or { text-align: center; color: var(--muted); font-size: .85rem; margin: .75rem 0;
+        font-family: ui-sans-serif, system-ui, sans-serif; }
+  .file-chip { display: inline-flex; align-items: center; gap: .5rem; background: var(--accent-soft);
+               border-radius: 999px; padding: .3rem .9rem; font-size: .9rem;
+               font-family: ui-sans-serif, system-ui, sans-serif; }
+  .file-chip button { background: none; border: none; cursor: pointer; color: var(--muted); font-size: 1rem; }
+  .setup-notice { background: #fff8e8; border-color: #ecd9a0; font-size: .95rem; }
+  .setup-notice code { background: #fff; border: 1px solid var(--border); border-radius: 4px;
+                       padding: .1em .35em; font-size: .9em; }
+  .error { background: #fdf0ed; border: 1px solid #efc4ba; color: var(--danger);
+           border-radius: 8px; padding: .75rem 1rem; margin-bottom: 1rem; font-size: .95rem; }
+  .status { color: var(--muted); font-style: italic; margin: 1rem 0; }
+  .status .dot { display: inline-block; width: .5em; height: .5em; border-radius: 50%;
+                 background: var(--accent); margin-right: .5em; animation: pulse 1.2s infinite; }
+  @keyframes pulse { 0%,100% { opacity: .3 } 50% { opacity: 1 } }
+  article.report { padding: 1.75rem 2rem; }
+  article.report h1 { font-size: 1.8rem; line-height: 1.25; }
+  article.report h2 { font-size: 1.3rem; margin-top: 2rem; border-bottom: 1px solid var(--border);
+                      padding-bottom: .3rem; }
+  article.report h3 { font-size: 1.1rem; color: var(--accent); }
+  article.report blockquote { border-left: 3px solid var(--accent); margin: 1rem 0;
+                              padding: .25rem 1rem; background: var(--accent-soft);
+                              border-radius: 0 8px 8px 0; font-size: 1.1rem; }
+  article.report table { border-collapse: collapse; width: 100%; font-size: .95rem; }
+  article.report th, article.report td { border: 1px solid var(--border); padding: .5rem .75rem; text-align: left; }
+  article.report th { background: var(--paper); font-family: ui-sans-serif, system-ui, sans-serif;
+                      font-size: .8rem; text-transform: uppercase; letter-spacing: .05em; }
+  article.report code { background: var(--paper); border: 1px solid var(--border);
+                        border-radius: 4px; padding: .1em .35em; font-size: .9em; }
+  article.report pre { background: #20303c; color: #e8eef3; padding: 1rem; border-radius: 8px;
+                       overflow-x: auto; }
+  article.report pre code { background: none; border: none; color: inherit; }
+  .report-actions { display: flex; gap: .75rem; justify-content: flex-end; margin: .75rem 0 1.5rem; }
+  .chat-turn { margin-bottom: 1rem; }
+  .chat-turn .who { font-size: .75rem; text-transform: uppercase; letter-spacing: .08em;
+                    color: var(--muted); font-family: ui-sans-serif, system-ui, sans-serif;
+                    font-weight: 700; margin-bottom: .2rem; }
+  .chat-turn.user .bubble { background: var(--accent-soft); border-radius: 10px; padding: .6rem 1rem; }
+  .chat-input { display: flex; gap: .75rem; margin-top: 1rem; }
+  .chat-input input { flex: 1; }
+  footer { margin-top: 3rem; color: var(--muted); font-size: .85rem; text-align: center;
+           font-family: ui-sans-serif, system-ui, sans-serif; }
+  footer a { color: var(--accent); }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" data-presets="react">
+const { useState, useRef, useCallback } = React;
+
+/* ─────────────────────────── SETUP: PASTE YOUR KEY ───────────────────────────
+   Put your Anthropic API key between the quotes below (get one at
+   https://platform.claude.com), save the file, and reload it in your browser.
+
+   ⚠️  The key gives access to your Anthropic account. Keep this file private
+   once the key is in it — do NOT commit it to a public repo or share it.
+──────────────────────────────────────────────────────────────────────────── */
+const API_KEY = "PASTE_YOUR_ANTHROPIC_API_KEY_HERE";
+
+/* ----------------------------- constants ------------------------------ */
+
+const MODEL = "claude-opus-4-8";
+const MAX_TOKENS = 64000;
+const API_URL = "https://api.anthropic.com/v1/messages";
+
+const SYSTEM_PROMPT = `You are a brilliant science communicator in the tradition of Richard Feynman: you explain complex research so clearly that a curious person with no background in the field walks away actually understanding it — not just nodding along. You never dumb things down by being vague; you simplify by finding the right analogy, the concrete example, the everyday comparison.
+
+You are also a rigorous, skeptical scientist. You distinguish between what a paper *shows* and what it merely *claims*, you notice weak spots in methodology, and you know how to design small, practical experiments that an ordinary motivated person could run to check a paper's claims for themselves.
+
+Ground everything you write in the actual paper provided. If the paper does not support a statement, say so rather than inventing details. When the paper is outside your expertise or ambiguous, acknowledge the uncertainty honestly.`;
+
+const AUDIENCE_GUIDES = {
+  eli5: "Explain everything as if to a bright 12-year-old. No jargon at all — when a technical term is unavoidable, immediately explain it with an everyday analogy. Short sentences. Lots of concrete examples.",
+  general: "Explain for a curious adult with no background in this field — think of an interested newspaper reader. Minimal jargon; define every technical term the first time it appears using plain language and analogies.",
+  student: "Explain for an undergraduate student in a related field. You may use foundational technical vocabulary, but define field-specific terms and methods. Focus on building intuition for *why* the methods work, not just what they are.",
+};
+
+function buildReportPrompt(level, nExperiments) {
+  return `Read the attached research paper carefully, then write a report in Markdown with exactly the following sections. Target audience: ${AUDIENCE_GUIDES[level]}
+
+# <Plain-language title you write yourself — not the paper's title>
+
+> One-sentence version of the whole paper that anyone could understand.
+
+## 📌 The 30-second summary
+3-5 sentences: what question the researchers asked, what they did, what they found, and why anyone should care.
+
+## 🧒 Explain it like I'm new to this
+The heart of the report. Walk through the paper's core idea using analogies and concrete examples. Build up from things the reader already knows. This section should make the reader feel "oh, that's actually not so mysterious." 3-6 paragraphs.
+
+## 🔑 Key terms decoded
+A table with two columns: the jargon term as used in the paper, and a one-line plain-language translation. Include only terms the reader needs to understand this paper (5-10 entries).
+
+## 🔬 What they actually did
+Step-by-step description of the methodology in plain language: the data they used, the procedure, and how they measured success. Number the steps.
+
+## 📊 What they found
+The main results, stated concretely with the actual numbers from the paper where they matter. For each result, add one sentence on what it means in practical terms.
+
+## ⚠️ Grain of salt
+Honest limitations: sample size, assumptions, conflicts of interest, what the paper does NOT show, and any claims that outrun the evidence. Be specific to this paper, not generic.
+
+## 🧪 Validate it yourself
+This section is essential. Design ${nExperiments} hands-on experiments the reader could run to check the paper's claims themselves. Order them from easiest to hardest. For each experiment use this exact structure:
+
+### Experiment <N>: <short name>
+- **What it tests:** which specific claim from the paper this checks
+- **Difficulty:** Easy / Medium / Hard, plus rough time estimate
+- **What you need:** tools, data, code, or materials — favor free and publicly available ones (public datasets, open-source code, the paper's own released artifacts, spreadsheets, simple Python scripts)
+- **Steps:** numbered, concrete steps a motivated non-expert can follow
+- **What you should see if the paper is right:** the expected observation, with rough numbers
+- **Red flags:** what result would suggest the paper's claim doesn't hold up
+
+If the paper links to its own code or data, make Experiment 1 about reproducing a result from those artifacts. If full replication is impractical (needs a particle accelerator, a GPU cluster, a clinical trial), include at least one scaled-down sanity check (smaller dataset, simulation, back-of-envelope calculation) and one "check the inputs" experiment (verify a data source, re-derive a key equation, spot-check a cited statistic).
+
+## 🌍 Why this matters
+2-3 sentences on the real-world implications if the findings hold up.
+
+Write the report now. Output only the Markdown report, no preamble.`;
+}
+
+/* --------------------------- paper resolution -------------------------- */
+
+const ARXIV_ID_RE = /^(?:arxiv:)?(\d{4}\.\d{4,5}(?:v\d+)?)$/i;
+const ARXIV_URL_RE = /^https?:\/\/(?:www\.)?arxiv\.org\/(?:abs|pdf)\/(\d{4}\.\d{4,5}(?:v\d+)?)(?:\.pdf)?\/?$/i;
+
+function resolveReference(ref) {
+  ref = ref.trim();
+  const m = ref.match(ARXIV_ID_RE) || ref.match(ARXIV_URL_RE);
+  if (m) {
+    return {
+      block: docBlock({ type: "url", url: `https://arxiv.org/pdf/${m[1]}` }),
+      label: `arXiv:${m[1]}`,
+    };
+  }
+  if (/^https?:\/\//.test(ref)) {
+    return { block: docBlock({ type: "url", url: ref }), label: ref };
+  }
+  throw new Error("Enter an arXiv ID (e.g. 1706.03762), an arXiv URL, or a direct link to a PDF — or upload a PDF file.");
+}
+
+function docBlock(source) {
+  // cache_control: follow-up questions reuse the cached paper instead of re-reading it
+  return { type: "document", source, cache_control: { type: "ephemeral" } };
+}
+
+function fileToDocBlock(file) {
+  return new Promise((resolve, reject) => {
+    if (file.size > 32 * 1024 * 1024) {
+      reject(new Error(`${file.name} is ${(file.size / 1e6).toFixed(0)} MB — above the 32 MB API limit for PDFs.`));
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64 = reader.result.split(",", 2)[1];
+      resolve(docBlock({ type: "base64", media_type: "application/pdf", data: base64 }));
+    };
+    reader.onerror = () => reject(new Error(`Could not read ${file.name}.`));
+    reader.readAsDataURL(file);
+  });
+}
+
+/* ----------------------------- API streaming --------------------------- */
+
+async function streamMessage({ apiKey, messages, onText, signal }) {
+  const response = await fetch(API_URL, {
+    method: "POST",
+    signal,
+    headers: {
+      "content-type": "application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+      // required for calling the API from a browser
+      "anthropic-dangerous-direct-browser-access": "true",
+    },
+    body: JSON.stringify({
+      model: MODEL,
+      max_tokens: MAX_TOKENS,
+      stream: true,
+      thinking: { type: "adaptive" },
+      system: SYSTEM_PROMPT,
+      messages,
+    }),
+  });
+
+  if (!response.ok) {
+    let detail = `HTTP ${response.status}`;
+    try {
+      const err = await response.json();
+      detail = err.error?.message || detail;
+    } catch (_) { /* non-JSON error body */ }
+    if (response.status === 401) detail = "Invalid API key. Check it at platform.claude.com.";
+    throw new Error(detail);
+  }
+
+  const decoder = new TextDecoder();
+  const reader = response.body.getReader();
+  let buffer = "";
+  let fullText = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const events = buffer.split("\n\n");
+    buffer = events.pop(); // keep the trailing partial event
+    for (const event of events) {
+      for (const line of event.split("\n")) {
+        if (!line.startsWith("data: ")) continue;
+        let data;
+        try { data = JSON.parse(line.slice(6)); } catch (_) { continue; }
+        if (data.type === "content_block_delta" && data.delta?.type === "text_delta") {
+          fullText += data.delta.text;
+          onText(fullText);
+        } else if (data.type === "error") {
+          throw new Error(data.error?.message || "Stream error");
+        }
+      }
+    }
+  }
+  return fullText;
+}
+
+/* ------------------------------ components ----------------------------- */
+
+function Markdown({ text }) {
+  const html = DOMPurify.sanitize(marked.parse(text));
+  return <div dangerouslySetInnerHTML={{ __html: html }} />;
+}
+
+const KEY_READY = /^sk-ant-/.test(API_KEY);
+
+function App() {
+  const [reference, setReference] = useState("");
+  const [file, setFile] = useState(null);
+  const [level, setLevel] = useState("general");
+  const [nExperiments, setNExperiments] = useState(4);
+
+  const [phase, setPhase] = useState("idle"); // idle | generating | done | answering
+  const [error, setError] = useState("");
+  const [report, setReport] = useState("");
+  const [paperLabel, setPaperLabel] = useState("");
+  const [chat, setChat] = useState([]); // {role: "user"|"assistant", text}
+  const [question, setQuestion] = useState("");
+
+  const messagesRef = useRef([]); // full API conversation, including the document block
+  const fileInputRef = useRef(null);
+  const abortRef = useRef(null);
+
+  const busy = phase === "generating" || phase === "answering";
+
+  const generate = useCallback(async () => {
+    setError("");
+    if (!KEY_READY) { setError("No API key set — open this file in a text editor and paste your key into the API_KEY line near the top."); return; }
+
+    let block, label;
+    try {
+      if (file) {
+        block = await fileToDocBlock(file);
+        label = file.name;
+      } else {
+        ({ block, label } = resolveReference(reference));
+      }
+    } catch (e) { setError(e.message); return; }
+
+    setPhase("generating");
+    setReport("");
+    setChat([]);
+    setPaperLabel(label);
+    abortRef.current = new AbortController();
+
+    messagesRef.current = [{
+      role: "user",
+      content: [block, { type: "text", text: buildReportPrompt(level, nExperiments) }],
+    }];
+
+    try {
+      const fullText = await streamMessage({
+        apiKey: API_KEY,
+        messages: messagesRef.current,
+        onText: setReport,
+        signal: abortRef.current.signal,
+      });
+      messagesRef.current.push({ role: "assistant", content: fullText });
+      setPhase("done");
+    } catch (e) {
+      if (e.name !== "AbortError") setError(e.message);
+      setPhase(messagesRef.current.length > 1 ? "done" : "idle");
+    }
+  }, [file, reference, level, nExperiments]);
+
+  const ask = useCallback(async () => {
+    const q = question.trim();
+    if (!q || busy) return;
+    setQuestion("");
+    setError("");
+    setChat((c) => [...c, { role: "user", text: q }, { role: "assistant", text: "" }]);
+    setPhase("answering");
+    abortRef.current = new AbortController();
+
+    messagesRef.current.push({ role: "user", content: q });
+    try {
+      const fullText = await streamMessage({
+        apiKey: API_KEY,
+        messages: messagesRef.current,
+        onText: (t) => setChat((c) => [...c.slice(0, -1), { role: "assistant", text: t }]),
+        signal: abortRef.current.signal,
+      });
+      messagesRef.current.push({ role: "assistant", content: fullText });
+    } catch (e) {
+      messagesRef.current.pop(); // drop the unanswered question so the turn order stays valid
+      setChat((c) => c.slice(0, -2));
+      if (e.name !== "AbortError") setError(e.message);
+    }
+    setPhase("done");
+  }, [question, busy]);
+
+  const stop = () => abortRef.current?.abort();
+
+  const download = () => {
+    const blob = new Blob([report], { type: "text/markdown" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = (paperLabel.replace(/[^\w.-]+/g, "_") || "paper") + "-explained.md";
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
+
+  return (
+    <>
+      <header>
+        <h1>Paper <em>Simplifier</em></h1>
+        <p className="tagline">
+          Any research paper, explained so you actually get it — plus experiments to check it yourself.
+        </p>
+      </header>
+
+      {!KEY_READY && (
+        <div className="card setup-notice">
+          <strong>One-time setup:</strong> open this file in a text editor, find the
+          {" "}<code>API_KEY</code> line near the top, and paste your Anthropic API key
+          between the quotes (get one at{" "}
+          <a href="https://platform.claude.com" target="_blank" rel="noreferrer">platform.claude.com</a>).
+          Save and reload this page. Keep the file private afterwards — the key gives
+          access to your account.
+        </div>
+      )}
+
+      <div className="card">
+        <label htmlFor="ref">Paper — arXiv ID, arXiv URL, or direct PDF link</label>
+        <input id="ref" type="text" placeholder="e.g. 1706.03762 or https://arxiv.org/abs/1706.03762"
+               value={reference} disabled={!!file}
+               onChange={(e) => setReference(e.target.value)}
+               onKeyDown={(e) => e.key === "Enter" && generate()} />
+        <div className="or">— or —</div>
+        {file ? (
+          <span className="file-chip">
+            📄 {file.name}
+            <button onClick={() => { setFile(null); fileInputRef.current.value = ""; }} title="Remove">✕</button>
+          </span>
+        ) : (
+          <button className="ghost" onClick={() => fileInputRef.current.click()}>Upload a PDF…</button>
+        )}
+        <input ref={fileInputRef} type="file" accept="application/pdf" hidden
+               onChange={(e) => setFile(e.target.files[0] || null)} />
+
+        <div className="row" style={{ marginTop: "1rem" }}>
+          <div>
+            <label htmlFor="level">Explain it for</label>
+            <select id="level" value={level} onChange={(e) => setLevel(e.target.value)}>
+              <option value="eli5">A bright 12-year-old (ELI5)</option>
+              <option value="general">A curious adult (general)</option>
+              <option value="student">A university student</option>
+            </select>
+          </div>
+          <div>
+            <label htmlFor="nexp">Validation experiments</label>
+            <select id="nexp" value={nExperiments} onChange={(e) => setNExperiments(+e.target.value)}>
+              {[2, 3, 4, 5, 6].map((n) => <option key={n} value={n}>{n}</option>)}
+            </select>
+          </div>
+        </div>
+
+        {phase === "generating"
+          ? <button className="primary" onClick={stop}>■ Stop</button>
+          : <button className="primary" onClick={generate} disabled={busy}>Explain this paper</button>}
+      </div>
+
+      {error && <div className="error">⚠️ {error}</div>}
+
+      {phase === "generating" && !report &&
+        <p className="status"><span className="dot" />Reading {paperLabel}… long papers can take a minute.</p>}
+
+      {report && (
+        <>
+          <div className="report-actions">
+            <button className="ghost" onClick={download}>⬇ Download .md</button>
+          </div>
+          <article className="report card"><Markdown text={report} /></article>
+        </>
+      )}
+
+      {(phase === "done" || phase === "answering") && (
+        <div className="card">
+          <label>Ask a follow-up about this paper</label>
+          {chat.map((turn, i) => (
+            <div key={i} className={`chat-turn ${turn.role}`}>
+              <div className="who">{turn.role === "user" ? "You" : "Paper Simplifier"}</div>
+              {turn.role === "user"
+                ? <div className="bubble">{turn.text}</div>
+                : <Markdown text={turn.text || "…"} />}
+            </div>
+          ))}
+          <div className="chat-input">
+            <input type="text" placeholder='e.g. "How big was the sample size, really?"'
+                   value={question} onChange={(e) => setQuestion(e.target.value)}
+                   onKeyDown={(e) => e.key === "Enter" && ask()} disabled={busy} />
+            {phase === "answering"
+              ? <button className="ghost" onClick={stop}>■ Stop</button>
+              : <button className="ghost" onClick={ask} disabled={busy || !question.trim()}>Ask</button>}
+          </div>
+        </div>
+      )}
+
+      <footer>
+        Runs entirely in your browser — papers go only to the
+        {" "}<a href="https://platform.claude.com" target="_blank" rel="noreferrer">Claude API</a>,
+        using the key embedded in this file. Keep the file private.
+        Reports are AI-generated; for high-stakes decisions, read the paper.
+      </footer>
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>
